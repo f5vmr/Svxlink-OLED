@@ -7,7 +7,7 @@ No physical OLED hardware required.
 """
 
 import tkinter as tk
-
+import time
 from PIL import Image, ImageTk
 
 from oled.renderer import render_status
@@ -15,7 +15,7 @@ from oled.status_source import get_oled_status
 
 
 SCALE = 3
-POLL_INTERVAL_MS = 1000
+POLL_INTERVAL_MS = 100
 WIDTH = 128
 HEIGHT = 64
 
@@ -28,6 +28,7 @@ class OLEDWindow:
 
         self.previous_status = None
         self.photo = None
+        self.scroll_start = time.monotonic()
 
         self.display = tk.Label(
             root,
@@ -56,9 +57,17 @@ class OLEDWindow:
                 "tx": False,
                 "talkgroup": "Offline",
                 "online": False,
+                "reflector": "Offline",
             }
 
         if status != self.previous_status:
+            if (
+                self.previous_status is None
+                or status["talkgroup"] != self.previous_status["talkgroup"]
+            ):
+                self.scroll_start = time.monotonic()
+
+        if True:
             image = render_status(
                 callsign=status["callsign"],
                 rx=status["rx"],
@@ -66,6 +75,8 @@ class OLEDWindow:
                 talkgroup=status["talkgroup"],
                 width=WIDTH,
                 height=HEIGHT,
+                elapsed=time.monotonic() - self.scroll_start,
+                reflector=status["reflector"]
             )
 
             enlarged = image.convert("RGB").resize(

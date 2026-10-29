@@ -1,0 +1,20 @@
+[Unit]
+Description=SvxLink-OLED local status display
+After=network.target svxlink.service
+
+[Service]
+Type=simple
+User=svxlink
+SupplementaryGroups=i2c
+WorkingDirectory=/opt/svxlink-oled
+Environment=SVXLINK_OLED_CONFIG=/etc/svxlink-oled/oled.ini
+ExecStart=/opt/svxlink-oled/.venv/bin/python -m oled.hardware
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

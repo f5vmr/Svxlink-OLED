@@ -11,7 +11,7 @@ from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
 
 
-DEFAULT_STATUS_URL = "http://192.168.1.214:5000/api/status"
+DEFAULT_STATUS_URL = "http://17.0.0.1:5000/api/status"
 
 
 def fetch_status(status_url=DEFAULT_STATUS_URL, timeout=5):
@@ -52,6 +52,7 @@ def get_oled_status(status_url=DEFAULT_STATUS_URL, timeout=5):
         "callsign": status.get("callsign", "Unknown"),
         "rx": bool(radio_state.get("rx", False)),
         "tx": bool(radio_state.get("tx", False)),
+        "reflector": status.get("reflector", "Not connected"),
         "talkgroup": status.get("active_talkgroup", "Standby"),
         "online": True,
     }
