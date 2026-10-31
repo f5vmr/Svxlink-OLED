@@ -44,7 +44,9 @@ sudo raspi-config
 Choose **Interface Options → I2C → Enable**. Exit and reboot if requested. Then reconnect to the Pi.
 
 This procedure is for an ordinary Raspberry Pi. On an ICS-equipped installation, follow the controller's existing hardware preparation instructions instead of changing overlays without checking.
+### Connecting the OLED to the Raspberry Pi
 
+![Raspberry Pi OLED wiring](images/svxlink_oled_verified_wiring.png)
 ## 3. Download SvxLink-OLED
 
 Enter these commands **on the Raspberry Pi**, not on your desktop computer:
