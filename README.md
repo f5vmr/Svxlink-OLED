@@ -1,154 +1,103 @@
-# SvxLink-OLED — installation and operating manual
+# SvxLink-OLED — Installation and User Guide
 
-**Foundation V0.1 — development/pre-release. No physical OLED has yet been tested.**
+**Small, read-only display for an existing SvxLink node**  
+**Version 0.1 — first hardware-test release**
 
-SvxLink-OLED is a standalone, read-only local status accessory to SvxLink-Dash V4.1. It uses the existing HTTP `/api/status` endpoint. It cannot select nodes, switch talkgroups, send DTMF, change reflectors, or control transmitters. SvxLink-Dash and SvxLink do not need modification.
+SvxLink-OLED shows your node callsign, the connected reflector, RX and TX activity, and the current talkgroup. It does not control the radio or change any SvxLink settings.
 
-## 1. What the screen shows
+This guide is for someone who **already has SvxLink and SvxLink-Dash V4.1 working on a Raspberry Pi**, has attached a compatible OLED, and wants to turn it on.
 
-- Top line: local callsign aligned left; reflector name aligned right, truncated if necessary.
-- Middle line: receiver RX active/idle and transmitter TX active/idle.
-- Bottom line: talkgroup number/name or Standby; long text can scroll horizontally.
-- If the local API is unreachable, display an unavailable/offline status rather than showing stale activity as live.
+If SvxLink and SvxLink-Dash are not installed yet, follow [the SvxLink initial setup guide](https://g4nab.co.uk/svxlink-single-node-initial-setup/) first. **Do not repeat that installation if your node already works.**
 
-The supplied renderer has previously been tested in a macOS/Tkinter simulator using live MB5HT data. A physical I²C OLED has **not** been tested. The present renderer is primarily laid out for 128×64; 128×128 rendering requires visual refinement before release.
+## 1. Before you begin
 
-## 2. Hardware supported in principle
+You need:
 
-| Controller | Nominal resolution | Notes |
-| --- | --- | --- |
-| SSD1315 | 128×64 | Default; luma.oled 3.15+ needed |
-| SSD1306 | 128×64 | Monochrome or fixed yellow/blue region module |
-| SH1106 | 128×64 | Select correct controller |
-| SH1107 | 128×128 | Physical layout not yet optimised |
+- A Raspberry Pi running SvxLink and SvxLink-Dash V4.1.
+- A supported I²C OLED display connected to the Raspberry Pi.
+- An internet connection on the Raspberry Pi for downloading the software and its dependencies.
+- Terminal access to the Pi, either directly or by SSH.
 
-Default I²C **7-bit** device address is `0x3C`. Printed `0x78` on a display PCB is generally the 8-bit *write* address byte, not the value to put in Linux software. Actual module controller/address and operating voltage must be confirmed from the manufacturer's information.
+Supported display configurations for this first version:
 
-A typical four-pin module has VCC, GND, SDA and SCL. Verify the module's voltage requirements and physical pin order **before** wiring it. For Raspberry Pi, SDA1 is normally GPIO2 / physical pin 3 and SCL1 GPIO3 / physical pin 5; do not assume these are exposed or electrically free on an ICS-equipped board. No modifications to ICS overlays or GPIO expander settings are included in this installer.
+| Display controller | Screen resolution |
+| --- | --- |
+| SSD1315 (default) | 128 × 64 |
+| SSD1306 | 128 × 64 |
+| SH1106 | 128 × 64 |
+| SH1107 | 128 × 128 (layout still being refined) |
 
+The usual OLED address is **0x3C**. Some boards mark this as **0x78**; do not enter 0x78 in the software.
 
-## 3. Prerequisites and installation sequence
+**If the Pi uses an ICS controller or other hardware on its GPIO header, confirm that the OLED connections and I²C address are compatible before proceeding.** Do not reconnect wires while the Raspberry Pi is powered.
 
-SvxLink-OLED is an optional accessory for an existing SvxLink installation. It requires SvxLink-Dash V4.1 to provide local node status.
+## 2. Enable I²C
 
-### 3.1 Install SvxLink using SvxLink Bootstrap
+If you have already enabled I²C using `sudo raspi-config` and rebooted, move straight to Step 3.
 
-For a new installation, first install and configure SvxLink using the established SvxLink Bootstrap procedure.
-
-Follow the current instructions at:
-
-https://g4nab.co.uk/svxlink-single-node-initial-setup/
-
-The Bootstrap process establishes the SvxLink environment and supports installation of SvxLink-Dash V4.1.
-
-Complete the SvxLink configuration and verify normal radio and reflector operation before adding an OLED.
-
-Existing operational installations do not need to repeat this procedure.
-
-### 3.2 Confirm SvxLink-Dash V4.1
-
-SvxLink-OLED obtains its information from the existing SvxLink-Dash status API.
-
-Confirm that SvxLink-Dash V4.1 is installed, operational and reporting the correct local node status.
-
-On the Raspberry Pi, check:
+Otherwise, in the Raspberry Pi terminal, enter:
 
 ```bash
-curl -fsS http://127.0.0.1/api/status
+sudo raspi-config
 ```
 
-If Dash uses port 5000:
+Choose **Interface Options → I2C → Enable**. Exit and reboot if requested. Then reconnect to the Pi.
+
+This procedure is for an ordinary Raspberry Pi. On an ICS-equipped installation, follow the controller's existing hardware preparation instructions instead of changing overlays without checking.
+
+## 3. Download SvxLink-OLED
+
+Enter these commands **on the Raspberry Pi**, not on your desktop computer:
 
 ```bash
-curl -fsS http://127.0.0.1:5000/api/status
+sudo apt-get update
+sudo apt-get install -y git
+cd /home/pi
+git clone https://github.com/f5vmr/Svxlink-OLED.git
+cd Svxlink-OLED
 ```
 
-The API must report the local callsign, receiver and transmitter activity, reflector status and active talkgroup.
+**Maintainer check before publication:** confirm the exact GitHub address above matches the published SvxLink-OLED project. If your Pi username is not `pi`, use `cd ~` instead of `cd /home/pi`.
 
-No changes to the SvxLink-Dash API are necessary.
+The download creates a folder containing the program and installation scripts. You do not need to edit any source code.
 
-### 3.3 OLED hardware and software requirements
+## 4. Check that the I²C connection is available
 
-- Raspberry Pi running Debian Bookworm, Trixie or a compatible Linux distribution.
-- Python 3.11 or newer recommended.
-- Operational SvxLink-Dash V4.1 installation.
-- Suitable SSD1315, SSD1306, SH1106 or SH1107 I²C OLED.
-- Accessible I²C interface with compatible electrical connections.
-- Root privileges for installation.
-- Existing `svxlink` service account.
-- Network access during installation for APT and Python dependencies.
-
-The installer creates a separate Python virtual environment for SvxLink-OLED.
-
-### 3.4 ICS controller installations
-
-For ICS-equipped Raspberry Pis, retain the existing ICS hardware preparation and configuration.
-
-The OLED installer must not automatically modify ICS overlays, GPIO assignments, audio configuration or GPIO expanders.
-
-Verify that the selected I²C bus and physical connections can safely accommodate the OLED before connecting it.
-
-### 3.5 Installation order
-
-1. Install and configure SvxLink using Bootstrap.
-2. Confirm SvxLink-Dash V4.1 is operational.
-3. Verify the local status API.
-4. Check the selected I²C bus and physical pin availability.
-5. Connect and verify the OLED hardware.
-6. Run the SvxLink-OLED installer.
-7. Review the OLED configuration.
-8. Enable and test the SvxLink-OLED systemd service.
-
-Existing SvxLink installations begin at step 2.
-
-## 4. Verify I²C — do this before installation
-
-From the repository root:
+While still in the `Svxlink-OLED` folder, run:
 
 ```bash
 ./install/verify-i2c.sh --check
 ```
-The verification script checks for the selected I²C adapter without automatically scanning attached devices. Address scanning is a separate manual diagnostic operation, particularly on ICS-equipped systems.
 
-If `/dev/i2c-1` exists, the script displays the adapter and, if `i2cdetect` is installed, addresses currently present. A visible `3c` may indicate the OLED, but does **not** identify the controller. `UU` means an address is claimed by a kernel driver; do not attempt to reassign or disturb it. A bus being present does not establish that a free connector is available.
+A successful check reports **`I2C adapter present: /dev/i2c-1`** and **PASS**.
 
-If I²C is absent on a **plain Raspberry Pi** after checking pins and overlays, you may opt in to:
+This proves the Raspberry Pi has an I²C interface; it does **not** prove that the OLED is connected correctly. The check deliberately does not scan other devices on the bus.
 
-```bash
-./install/verify-i2c.sh --enable
-```
+If it reports that `/dev/i2c-1` is missing, recheck Step 2. Do not proceed with the installation until the interface is available.
 
-This explicitly asks for permission to run `sudo raspi-config nonint do_i2c 0`, and separately asks before rebooting. It refuses automatic enabling on unidentified hardware. On remote repeaters, plan the reboot in a maintenance window. After reboot, rerun `--check`.
+## 5. Install the display software
 
-For a nondefault I²C bus, use e.g. `OLED_I2C_BUS=0 ./install/verify-i2c.sh --check` and set the matching bus in `config/oled.ini` before installation.
-
-## 5. Install (does not enable the service)
-
-From the repo on the target Raspberry Pi or SBC (not the MacBook):
+Run:
 
 ```bash
 sudo ./install/install-oled.sh
 ```
 
-The installer copies the OLED application to `/opt/svxlink-oled`, preserves `/etc/svxlink-oled/oled.ini` if present, creates `/opt/svxlink-oled/.venv`, installs the hardware library, and places a systemd service definition. It does **not** start a newly installed OLED service or modify SvxLink-Dash. It stops a previously running OLED service running and attempts to restart it, so maintenance requires coordination. No reboot is triggered by the installer.
+The installer downloads the required Python libraries, installs the OLED program, and prepares it to run automatically when enabled. It may take a little time on the first installation.
 
-Before actual activation, confirm the configured controller, I²C bus, address, resolution and URL in `/etc/svxlink-oled/oled.ini`. Make sure the service's `svxlink` user has access to `/dev/i2c-N`; the example service requests the `i2c` group. Verify the device at the expected address and **only after hardware validation** run:
+**The installer does not switch on a new OLED service.** That is done in Step 7, after the settings have been checked.
 
-```bash
-sudo systemctl enable --now svxlink-oled.service
-sudo systemctl status svxlink-oled.service
-journalctl -u svxlink-oled.service -n 50 --no-pager
-```
+## 6. Check the display settings
 
-To disable without stopping SvxLink:
+Most owners of a **128 × 64 SSD1315 OLED on I²C bus 1, address 0x3C** can keep the default settings.
+
+To view or change them, run:
 
 ```bash
-sudo systemctl disable --now svxlink-oled.service
+sudo nano /etc/svxlink-oled/oled.ini
 ```
 
-## 6. Configuration reference
-
-Edit `/etc/svxlink-oled/oled.ini` on the SBC:
+The standard settings are:
 
 ```ini
 [oled]
@@ -163,36 +112,112 @@ poll_seconds = 1.0
 scroll_frames_per_second = 10
 ```
 
-If the local Dash API uses port 5000, set `status_url = http://127.0.0.1:5000/api/status`. The hardware program deliberately accepts **localhost only** to avoid silently becoming a remote-node monitor. The MacBook's existing graphical simulator remains separate and may use its own development source URL.
+Only change the values that differ from your display. For example, for an SH1106 use `controller = sh1106`. For a 128 × 128 SH1107, use `controller = sh1107` and `height = 128`.
 
-## 7. Troubleshooting
+The status address beginning `127.0.0.1` is intentional: it means **this Raspberry Pi**. Do not replace it with the address of another node. If SvxLink-Dash runs on port 5000 instead of its usual port 80, use:
 
-- **Missing `/dev/i2c-1`:** check boot configuration, DT overlays, I²C driver and bus number. Reboot only when an enable operation actually needs it.
-- **No `3c`:** check wiring, power, address, bus, module polarity and bus visibility. Do not infer that the module is defective from one scan alone.
-- **Address already used:** stop; identify whether it is an OLED or an existing ICS component. Never write to an unknown address.
-- **Permission denied:** check `/dev/i2c-N` permissions and membership of the `i2c` group; do not chmod the whole bus to 777.
-- **Display blank:** verify installed controller, supported driver version and display power; check service journal.
-- **OFFLINE:** confirm local Dash API URL and port using `curl -fsS http://127.0.0.1/api/status` (or configured local port).
-- **Talkgroup doesn't move:** numerical TGs normally fit and should remain stationary. Only overflowed text scrolls.
-- **SH1107:** 128×128 controller support is planned, but the current renderer still needs a tailored layout.
-
-## 8. Test and release boundaries
-
-Previously established on MacBook: Pillow image generation, correct status retrieval from MB5HT, RF-driven RX/TX detection, Tkinter simulation, text clipping and scroll calculations. The new `oled/hardware.py` and installation scripts have not yet been exercised on an actual Linux target. Do not deploy them to a critical site without review, I²C validation and a physical display test. This is a foundation, not a production release.
-
-## 9. Developer repository hygiene
-
-Keep `.venv/`, `.venv-python39/`, `__pycache__/`, `*.py[cod]` and `.DS_Store` in `.gitignore`. From the repository root:
-
-```bash
-python3 -m compileall -q oled
-bash -n install/verify-i2c.sh install/install-oled.sh
-git diff --check
-git status --short
+```ini
+status_url = http://127.0.0.1:5000/api/status
 ```
 
-Stage and commit only after checking the new and modified files, then test installations on a noncritical Raspberry Pi before releasing.
+To save in Nano, press **Ctrl+O**, then **Enter**, followed by **Ctrl+X** to exit.
 
-## 10. Acknowledgements
+## 7. Start the OLED
 
-SvxLink is developed by Tobias Blomberg SM0SVX and contributors. SvxLink-OLED is a separate accessory project by Chris Jackson G4NAB, building on the established SvxLink-Dash, SvxLink-Touch and SvxLink-LCD workflows.
+After checking the display type, connections and settings, enter:
+
+```bash
+sudo systemctl enable --now svxlink-oled.service
+```
+
+The OLED should now display the local node's status. It will start automatically whenever the Raspberry Pi boots.
+
+To check whether the program is running:
+
+```bash
+sudo systemctl status svxlink-oled.service --no-pager
+```
+
+Look for **`active (running)`**. A running service does not by itself prove that pixels are visible; check the OLED itself as well.
+
+## 8. What you should see
+
+The display shows:
+
+- **Top left:** your node's callsign.
+- **Top right:** the reflector name, if available.
+- **Middle:** RX and TX indicators, showing active or idle.
+- **Bottom:** the current talkgroup or Standby.
+
+Long talkgroup text may scroll from side to side. Short talkgroup numbers remain still. When local status cannot be read, the display should show an offline indication rather than pretend the receiver or transmitter is active.
+
+## 9. If the display remains blank
+
+First check the program's messages:
+
+```bash
+sudo journalctl -u svxlink-oled.service -n 50 --no-pager
+```
+
+Then check these common causes:
+
+| Problem | What to check |
+| --- | --- |
+| OLED stays black | Power connections, correct controller in `oled.ini`, and service messages |
+| I²C interface missing | I²C enabled in `raspi-config`, correct bus, reboot if required |
+| Service says permission denied | I²C device permissions and the `i2c` group |
+| Display reports OFFLINE | SvxLink-Dash running locally, and correct API port in `oled.ini` |
+| Text appears incorrect | Display controller and resolution settings |
+
+On a **plain Raspberry Pi with no other I²C peripherals**, an optional address check is:
+
+```bash
+sudo apt-get install -y i2c-tools
+sudo i2cdetect -y 1
+```
+
+A response at `3c` is consistent with the usual OLED address, but does not identify its controller. **Do not scan an I²C bus shared with an ICS controller or unknown peripherals without checking that it is safe.**
+
+## 10. Everyday use
+
+No buttons or controls are needed. The display updates automatically as SvxLink operates.
+
+To restart just the display software:
+
+```bash
+sudo systemctl restart svxlink-oled.service
+```
+
+To stop the display:
+
+```bash
+sudo systemctl stop svxlink-oled.service
+```
+
+To stop it and prevent it from starting at boot:
+
+```bash
+sudo systemctl disable --now svxlink-oled.service
+```
+
+These commands affect **SvxLink-OLED only**, not the SvxLink radio service or SvxLink-Dash.
+
+## 11. Updating SvxLink-OLED
+
+When an update is published, return to the folder used in Step 3:
+
+```bash
+cd ~/Svxlink-OLED
+git pull
+sudo ./install/install-oled.sh
+```
+
+The installer retains your existing `/etc/svxlink-oled/oled.ini` settings. If the OLED service was running, the upgrade procedure attempts to restart it when installation completes. If an upgrade fails, check the messages in Step 9. The installer does not provide automatic rollback.
+
+## 12. Acknowledgements and support
+
+SvxLink is developed by Tobias Blomberg **SM0SVX** and contributors. SvxLink-OLED is an independent, optional accessory developed by **Chris Jackson G4NAB**, using status information provided by SvxLink-Dash V4.1.
+
+For dashboard-related support: **dashboard-support@g4nab.co.uk**.
+
+**Release note:** Version 0.1 is undergoing its first physical-display tests. Controller support and the 128 × 128 layout have not yet been fully verified on hardware.
