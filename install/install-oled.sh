@@ -66,9 +66,22 @@ apt-get update
 apt-get install -y python3 python3-venv python3-pip i2c-tools
 install -d -m 0755 /opt/svxlink-oled /etc/svxlink-oled
 install -d -m 0755 /opt/svxlink-oled/oled
-for f in __init__.py renderer.py scroll.py status_source.py hardware.py; do
+for f in __init__.py renderer.py scroll.py status_source.py reflector_names.py hardware.py; do
   install -m 0644 "$SOURCE/oled/$f" "/opt/svxlink-oled/oled/$f"
 done
+# Install the default reflector-name mappings.
+# Preserve any operator-customised mappings on upgrades.
+REFLECTOR_CONFIG="/etc/svxlink-oled/reflectors.ini"
+
+if [[ ! -e "$REFLECTOR_CONFIG" ]]; then
+  install -m 0644 \
+    "$SOURCE/config/reflectors.ini" \
+    "$REFLECTOR_CONFIG"
+
+  echo 'Installed default reflector-name mappings.'
+else
+  echo 'Existing reflector-name mappings retained.'
+fi
 # Install configuration only on first installation.
 # Never overwrite an existing operator configuration.
 
