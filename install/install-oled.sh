@@ -69,10 +69,51 @@ install -d -m 0755 /opt/svxlink-oled/oled
 for f in __init__.py renderer.py scroll.py status_source.py hardware.py; do
   install -m 0644 "$SOURCE/oled/$f" "/opt/svxlink-oled/oled/$f"
 done
-if [[ ! -e /etc/svxlink-oled/oled.ini ]]; then
-  install -m 0644 "$SOURCE/config/oled.ini" /etc/svxlink-oled/oled.ini
+# Install configuration only on first installation.
+# Never overwrite an existing operator configuration.
+
+OLED_CONFIG="/etc/svxlink-oled/oled.ini"
+
+if [[ ! -e "$OLED_CONFIG" ]]; then
+  echo 'New SvxLink-OLED installation.'
+
+  install -m 0644 \
+    "$SOURCE/config/oled.ini" \
+    "$OLED_CONFIG"
+
+  echo 'Discovering local SvxLink-Dash API...'
+
+  DETECTED_API=""
+
+  for API_URL in \
+    "http://127.0.0.1/api/status" \
+    "http://127.0.0.1:5000/api/status"
+  do
+    if curl --noproxy '*' -fsS \
+      --max-time 3 \
+      --output /dev/null \
+      "$API_URL" 2>/dev/null; then
+
+      DETECTED_API="$API_URL"
+      break
+    fi
+  done
+
+  if [[ -n "$DETECTED_API" ]]; then
+    sed -i \
+      "s|^status_url *=.*|status_url = $DETECTED_API|" \
+      "$OLED_CONFIG"
+
+    echo "Local SvxLink-Dash API detected: $DETECTED_API"
+  else
+    echo 'WARNING: No local SvxLink-Dash API detected.'
+    echo 'Check that SvxLink-Dash is running on port 80 or 5000.'
+    echo "Review status_url in $OLED_CONFIG before starting OLED."
+  fi
+
 else
-  echo 'Existing configuration retained: /etc/svxlink-oled/oled.ini'
+  echo "Existing OLED configuration retained: $OLED_CONFIG"
+  echo 'Automatic API discovery skipped for existing installation.'
 fi
 python3 -m venv /opt/svxlink-oled/.venv
 /opt/svxlink-oled/.venv/bin/python -m pip install --upgrade 'luma.oled>=3.15,<4' 'Pillow>=10,<14'
